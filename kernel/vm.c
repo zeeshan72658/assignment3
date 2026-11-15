@@ -182,11 +182,56 @@ vmprint(pagetable_t pagetable)
 // add a mapping to the kernel page table.
 // only used when booting.
 // does not flush TLB or enable paging.
+#ifdef LAB_PGTBL
+static void
+kvmmapmega(pagetable_t pagetable, uint64 va, uint64 pa, int perm)
+{
+  pte_t *pte = &pagetable[PX(2, va)];
+  pagetable_t level1;
+
+  if (*pte & PTE_V) {
+    if (PTE_LEAF(*pte))
+      panic("kvmmap: level-2 leaf");
+    level1 = (pagetable_t)PTE2PA(*pte);
+  } else {
+    level1 = (pagetable_t)kalloc();
+    if (level1 == 0)
+      panic("kvmmap: kalloc");
+    memset(level1, 0, PGSIZE);
+    *pte = PA2PTE(level1) | PTE_V;
+  }
+
+  pte = &level1[PX(1, va)];
+  if (*pte & PTE_V)
+    panic("kvmmap: remap");
+  *pte = PA2PTE(pa) | perm | PTE_V;
+}
+#endif
+
 void
 kvmmap(pagetable_t kpgtbl, uint64 va, uint64 pa, uint64 sz, int perm)
 {
-  if (mappages(kpgtbl, va, sz, pa, perm) != 0)
-    panic("kvmmap");
+  if ((va % PGSIZE) != 0 || (pa % PGSIZE) != 0 || (sz % PGSIZE) != 0 ||
+      sz == 0)
+    panic("kvmmap: alignment");
+
+  while (sz > 0) {
+#ifdef LAB_PGTBL
+    if ((va % SUPERPGSIZE) == 0 && (pa % SUPERPGSIZE) == 0 &&
+        sz >= SUPERPGSIZE) {
+      kvmmapmega(kpgtbl, va, pa, perm);
+      va += SUPERPGSIZE;
+      pa += SUPERPGSIZE;
+      sz -= SUPERPGSIZE;
+      continue;
+    }
+#endif
+    if (mappages(kpgtbl, va, PGSIZE, pa, perm) != 0)
+      panic("kvmmap");
+    va += PGSIZE;
+    pa += PGSIZE;
+    sz -= PGSIZE;
+  }
 }
 
 // Create PTEs for virtual addresses starting at va that refer to
@@ -559,4 +604,3 @@ ismapped(pagetable_t pagetable, uint64 va)
   }
   return 0;
 }
-

@@ -56,3 +56,14 @@ initialized during process allocation and released with the process. A
 shared page could similarly speed up uptime() if the kernel published and
 maintained a tick count there; that would require care to define consistent
 reads while ticks are updated.
+
+Task 5: Use kernel megapages
+----------------------------
+
+Kernel mappings use a level-1 leaf PTE whenever the virtual address, physical
+address, and remaining mapping length allow an aligned 2 MiB page; other
+portions remain mapped with 4 KiB pages. In the standard QEMU layout, the
+64 MiB PLIC range uses 32 megapages. The aligned RAM range from 0x80200000
+to PHYSTOP uses 63 more, for 95 megapage PTEs total. Each replaces 512
+ordinary 4 KiB leaf PTEs and one bottom-level page-table page, saving 95
+bottom-level page-table pages (380 KiB).
