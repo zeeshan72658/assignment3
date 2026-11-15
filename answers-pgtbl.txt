@@ -66,4 +66,5 @@ portions remain mapped with 4 KiB pages. In the standard QEMU layout, the
 64 MiB PLIC range uses 32 megapages. The aligned RAM range from 0x80200000
 to PHYSTOP uses 63 more, for 95 megapage PTEs total. Each replaces 512
 ordinary 4 KiB leaf PTEs and one bottom-level page-table page, saving 95
-bottom-level page-table pages (380 KiB).
+bottom-level page-table pages (380 KiB). vmprint identifies upper-level
+leaf entries with a SUPERPAGE marker.

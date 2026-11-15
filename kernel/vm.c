@@ -159,8 +159,12 @@ vmprintwalk(pagetable_t pagetable, int level, uint64 base)
     for (int depth = 0; depth < 3 - level; depth++)
       printk(" ..");
     printk("%p: pte %p pa %p ", (void *)va, (void *)pte, (void *)PTE2PA(pte));
-    printk("%s%s%s%s\n", (pte & PTE_R) ? "R" : "", (pte & PTE_W) ? "W" : "",
+    printk("%s%s%s%s", (pte & PTE_R) ? "R" : "", (pte & PTE_W) ? "W" : "",
            (pte & PTE_X) ? "X" : "", (pte & PTE_U) ? "U" : "");
+
+    if (level > 0 && PTE_LEAF(pte))
+      printk(" SUPERPAGE");
+    printk("\n");
 
     if (level > 0 && !PTE_LEAF(pte))
       vmprintwalk((pagetable_t)PTE2PA(pte), level - 1, va);
