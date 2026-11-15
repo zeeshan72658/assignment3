@@ -45,3 +45,14 @@ address range, all requested mappings, and writable output buffer before
 clearing any A bits. After collecting the mask, it clears the bits and
 flushes the TLB so later accesses can be observed afresh. Invalid ranges,
 unmapped pages, and invalid output buffers return an error.
+
+Task 4: Speed up getpid
+-----------------------
+
+Each process owns a page containing its PID. The kernel maps it at USYSCALL
+with read and user permissions, but without write permission, so ugetpid()
+can read the value directly without entering the kernel. The page is
+initialized during process allocation and released with the process. A
+shared page could similarly speed up uptime() if the kernel published and
+maintained a tick count there; that would require care to define consistent
+reads while ticks are updated.
