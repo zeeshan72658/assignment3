@@ -34,3 +34,14 @@ depth. The virtual address is formed from the indices visited along the
 path. Each row prints the PTE, its extracted physical address, and any
 R/W/X/U permission letters. Only leaf rows map actual memory pages; the
 physical addresses on intermediate rows identify child page-table pages.
+
+Task 3: Detect accessed pages
+-----------------------------
+
+pgaccess checks each requested user-page PTE for the hardware-maintained
+accessed (A) bit and packs the results into a user buffer, with page zero
+represented by the least-significant bit. It validates the page count,
+address range, all requested mappings, and writable output buffer before
+clearing any A bits. After collecting the mask, it clears the bits and
+flushes the TLB so later accesses can be observed afresh. Invalid ranges,
+unmapped pages, and invalid output buffers return an error.
