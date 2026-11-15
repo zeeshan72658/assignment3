@@ -1,4 +1,3 @@
-// Saved registers for kernel context switches.
 struct context {
   uint64 ra;
   uint64 sp;
@@ -78,8 +77,6 @@ struct trapframe {
 
 enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
-struct usyscall;
-
 // Per-process state
 struct proc {
   struct spinlock lock;
@@ -99,11 +96,11 @@ struct proc {
   uint64 sz;                   // Size of process memory (bytes)
   pagetable_t pagetable;       // User page table
   struct trapframe *trapframe; // data page for trampoline.S
-#ifdef LAB_PGTBL
-  struct usyscall *usyscall; // shared read-only page for user space
-#endif
-  struct context context;     // swtch() here to run process
-  struct file *ofile[NOFILE]; // Open files
-  struct inode *cwd;          // Current directory
-  char name[16];              // Process name (debugging)
+  #ifdef LAB_PGTBL
+    struct usyscall *usyscall;
+  #endif
+  struct context context;      // swtch() here to run process
+  struct file *ofile[NOFILE];  // Open files
+  struct inode *cwd;           // Current directory
+  char name[16];               // Process name (debugging)
 };

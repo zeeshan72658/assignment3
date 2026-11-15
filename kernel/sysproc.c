@@ -73,6 +73,7 @@ sys_pause(void)
   int n;
   uint ticks0;
 
+
   argint(0, &n);
   if (n < 0)
     n = 0;
@@ -92,6 +93,7 @@ sys_pause(void)
   return 0;
 }
 
+
 #ifdef LAB_PGTBL
 int
 sys_vmprint(void)
@@ -108,63 +110,58 @@ sys_vmprint(void)
 int
 sys_pgaccess(void)
 {
+  uint64 start;
+  uint64 addr;
+  uint64 dest;
+  int npage;
+
   struct proc *p = myproc();
-  uint64 start, maskaddr;
-  int npages;
+
+  // Get the system call arguments.
   argaddr(0, &start);
-  argint(1, &npages);
-  argaddr(2, &maskaddr);
+  argint(1, &npage);
+  argaddr(2, &dest);
 
-  if (start >= MAXVA || npages < 0 || npages > PGSIZE * 8)
+  // Validate the number of pages.
+  if (npage < 1 || npage > 256)
     return -1;
 
-  uint64 nbytes = (npages + 7) / 8;
-  uint64 first = PGROUNDDOWN(start);
-  if (npages > 0 && first + (uint64)(npages - 1) * PGSIZE >= MAXVA)
-    return -1;
+  // Temporary buffer: 256 pages = 32 bytes.
+  char accessbits[32];
+  memset(accessbits, 0, sizeof(accessbits));
 
-  if (nbytes > 0) {
-    if (maskaddr >= MAXVA || maskaddr + nbytes < maskaddr ||
-        maskaddr + nbytes > MAXVA)
+  // Examine each requested page.
+  for (int i = 0; i < npage; i++) {
+
+    addr = start + (uint64)i * PGSIZE;
+
+    // Check for address overflow or invalid virtual address.
+    if (addr < start || addr >= MAXVA)
       return -1;
-    for (uint64 va = PGROUNDDOWN(maskaddr); va < maskaddr + nbytes;
-         va += PGSIZE) {
-      pte_t *pte = walk(p->pagetable, va, 0);
-      if (pte == 0 ||
-          (*pte & (PTE_V | PTE_U | PTE_W)) != (PTE_V | PTE_U | PTE_W))
-        return -1;
-    }
-  }
 
-  char *bits = kalloc();
-  if (bits == 0)
-    return -1;
-  memset(bits, 0, PGSIZE);
+    // Find the page-table entry.
+    pte_t *pte = walk(p->pagetable, addr, 0);
 
-  for (int i = 0; i < npages; i++) {
-    pte_t *pte = walk(p->pagetable, first + (uint64)i * PGSIZE, 0);
-    if (pte == 0 || (*pte & (PTE_V | PTE_U)) != (PTE_V | PTE_U)) {
-      kfree(bits);
+    // Ensure that the page is mapped and user-accessible.
+    if (pte == 0 || (*pte & PTE_V) == 0 || (*pte & PTE_U) == 0)
       return -1;
-    }
-  }
 
-  int accessed = 0;
-  for (int i = 0; i < npages; i++) {
-    pte_t *pte = walk(p->pagetable, first + (uint64)i * PGSIZE, 0);
+    // Check whether the page has been accessed.
     if (*pte & PTE_A) {
-      bits[i / 8] |= 1U << (i % 8);
+
+      // Set the corresponding bit in our result.
+      accessbits[i / 8] |= (1 << (i % 8));
+
+      // Clear the accessed bit for future tracking.
       *pte &= ~PTE_A;
-      accessed = 1;
     }
   }
-  if (accessed)
-    sfence_vma();
 
-  int result = copyout(p->pagetable, p->sz, maskaddr, bits, nbytes);
-  kfree(bits);
-  if (result < 0)
+  // Copy the result back to the user's address space.
+  if (copyout(p->pagetable, p->sz, dest,
+              accessbits, (npage + 7) / 8) < 0)
     return -1;
+
   return 0;
 }
 #endif

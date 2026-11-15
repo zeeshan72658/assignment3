@@ -6,9 +6,6 @@
 #include "proc.h"
 #include "syscall.h"
 #include "defs.h"
-#include "fs.h"
-#include "sleeplock.h"
-#include "file.h"
 
 // Fetch the uint64 at addr from the current process.
 int
@@ -107,21 +104,7 @@ extern uint64 sys_mkdir(void);
 extern uint64 sys_close(void);
 extern uint64 sys_sync(void);
 
-#ifdef LAB_NET
-extern uint64 sys_bind(void);
-extern uint64 sys_unbind(void);
-extern uint64 sys_send(void);
-extern uint64 sys_recv(void);
-#endif
-#ifdef LAB_PGTBL
-extern uint64 sys_pgpte(void);
-extern uint64 sys_vmprint(void);
-extern uint64 sys_pgaccess(void);
-extern uint64 sys_ksupernpte(void);
-#endif
-#ifdef LAB_LOCK
-extern uint64 sys_cpupin(void);
-#endif
+extern uint64 sys_interpose(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -149,24 +132,10 @@ static uint64 (*syscalls[])(void) = {
   [SYS_mkdir]   = sys_mkdir,
   [SYS_close]   = sys_close,
   [SYS_sync]    = sys_sync,
-#ifdef LAB_NET
-  [SYS_bind] = sys_bind,
-  [SYS_unbind] = sys_unbind,
-  [SYS_send] = sys_send,
-  [SYS_recv] = sys_recv,
-#endif
-#ifdef LAB_PGTBL
-  [SYS_pgpte] = sys_pgpte,
-  [SYS_vmprint] = sys_vmprint,
-  [SYS_pgaccess] = sys_pgaccess,
-  [SYS_ksupernpte] = sys_ksupernpte,
-#endif
-#ifdef LAB_LOCK
-  [SYS_rwlktest] = sys_rwlktest,
-  [SYS_cpupin] = sys_cpupin,
-#endif
+  [SYS_interpose] = sys_interpose,
   // clang-format on
 };
+
 
 void
 syscall(void)
@@ -175,12 +144,27 @@ syscall(void)
   struct proc *p = myproc();
 
   num = p->trapframe->a7;
+
   if (num > 0 && num < NELEM(syscalls) && syscalls[num]) {
-    // Use num to lookup the system call function for num, call it,
-    // and store its return value in p->trapframe->a0
-    p->trapframe->a0 = syscalls[num]();
+    if (p->sandbox_mask & (1 << num)) {
+      if (num == SYS_open && p->sandbox_path[0] != '-' &&
+          p->sandbox_path[0] != '\0') {
+        char path[MAXPATH];
+
+        if (argstr(0, path, MAXPATH) >= 0 &&
+            strncmp(path, p->sandbox_path, MAXPATH) == 0) {
+          p->trapframe->a0 = syscalls[num]();
+        } else {
+          p->trapframe->a0 = -1;
+        }
+      } else {
+        p->trapframe->a0 = -1;
+      }
+    } else {
+      p->trapframe->a0 = syscalls[num]();
+    }
   } else {
-    printk("%d %s: unknown sys call %d\n", p->pid, p->name, num);
+    printk("unknown sys call %d\n", num);
     p->trapframe->a0 = -1;
   }
 }
