@@ -1,0 +1,25 @@
+Task 1: Inspect a user-process page table
+-----------------------------------------
+
+A valid PTE with R, W, or X set is a leaf: it maps the virtual page to the
+physical page frame encoded in the PTE. Adjacent virtual pages do not have to
+map adjacent physical frames. A valid PTE with none of R, W, or X set is an
+intermediate entry pointing to another page-table page. An all-zero PTE is
+invalid and maps no page.
+
+The permission letters mean read (R), write (W), execute (X), and user-mode
+access (U). Thus an RXU entry such as permission value 0x5b is valid,
+user-readable and executable, and not writable; it is typical for text. An
+RWU entry is valid, user-readable and writable, but not executable; it is
+typical for data, heap, and stack pages. An RW entry without U is
+supervisor-only, as for the trapframe. An RX entry without U is
+supervisor-only, as for the trampoline. In these example values, 0x5b also
+has the accessed bit set, 0xc7 has accessed and dirty set, and 0x4b has
+accessed set. These hardware status bits are included in the printed
+permission value but are not R/W/X/U permissions.
+
+The zero entry at virtual address 0xffffd000 in the supplied sample is
+unmapped. In the completed lab, that slot is used by USYSCALL instead: it
+contains the process ID and is readable by user mode but not writable.
+The next high page is the supervisor-only read/write trapframe, and the final
+page is the supervisor-only read/execute trampoline.
