@@ -148,10 +148,33 @@ walkaddr(pagetable_t pagetable, uint64 va)
 
 
 #if defined(LAB_PGTBL) || defined(SOL_MMAP) || defined(SOL_COW)
+static void
+vmprintwalk(pagetable_t pagetable, int level, uint64 base)
+{
+  for (int i = 0; i < 512; i++) {
+    pte_t pte = pagetable[i];
+    if ((pte & PTE_V) == 0)
+      continue;
+
+    uint64 va = base | ((uint64)i << PXSHIFT(level));
+    for (int depth = 0; depth < 3 - level; depth++)
+      printk(" ..");
+    printk("%p: pte %p pa %p ", (void *)va, (void *)pte,
+           (void *)PTE2PA(pte));
+    printk("%s%s%s%s\n", (pte & PTE_R) ? "R" : "",
+           (pte & PTE_W) ? "W" : "", (pte & PTE_X) ? "X" : "",
+           (pte & PTE_U) ? "U" : "");
+
+    if (level > 0 && !PTE_LEAF(pte))
+      vmprintwalk((pagetable_t)PTE2PA(pte), level - 1, va);
+  }
+}
+
 void
 vmprint(pagetable_t pagetable)
 {
-  // your code here
+  printk("page table %p\n", (void *)pagetable);
+  vmprintwalk(pagetable, 2, 0);
 }
 #endif
 
@@ -536,5 +559,4 @@ ismapped(pagetable_t pagetable, uint64 va)
   }
   return 0;
 }
-
 
