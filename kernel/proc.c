@@ -308,7 +308,6 @@ kfork(void)
   }
   np->sz = p->sz;
 
-
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
 
@@ -373,7 +372,6 @@ kexit(int status)
       p->ofile[fd] = 0;
     }
   }
-
 
   begin_op();
   iput(p->cwd);

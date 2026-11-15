@@ -146,7 +146,6 @@ walkaddr(pagetable_t pagetable, uint64 va)
   return pa;
 }
 
-
 #if defined(LAB_PGTBL) || defined(SOL_MMAP) || defined(SOL_COW)
 static void
 vmprintwalk(pagetable_t pagetable, int level, uint64 base)
@@ -159,11 +158,9 @@ vmprintwalk(pagetable_t pagetable, int level, uint64 base)
     uint64 va = base | ((uint64)i << PXSHIFT(level));
     for (int depth = 0; depth < 3 - level; depth++)
       printk(" ..");
-    printk("%p: pte %p pa %p ", (void *)va, (void *)pte,
-           (void *)PTE2PA(pte));
-    printk("%s%s%s%s\n", (pte & PTE_R) ? "R" : "",
-           (pte & PTE_W) ? "W" : "", (pte & PTE_X) ? "X" : "",
-           (pte & PTE_U) ? "U" : "");
+    printk("%p: pte %p pa %p ", (void *)va, (void *)pte, (void *)PTE2PA(pte));
+    printk("%s%s%s%s\n", (pte & PTE_R) ? "R" : "", (pte & PTE_W) ? "W" : "",
+           (pte & PTE_X) ? "X" : "", (pte & PTE_U) ? "U" : "");
 
     if (level > 0 && !PTE_LEAF(pte))
       vmprintwalk((pagetable_t)PTE2PA(pte), level - 1, va);
@@ -177,7 +174,6 @@ vmprint(pagetable_t pagetable)
   vmprintwalk(pagetable, 2, 0);
 }
 #endif
-
 
 // add a mapping to the kernel page table.
 // only used when booting.
@@ -211,8 +207,7 @@ kvmmapmega(pagetable_t pagetable, uint64 va, uint64 pa, int perm)
 void
 kvmmap(pagetable_t kpgtbl, uint64 va, uint64 pa, uint64 sz, int perm)
 {
-  if ((va % PGSIZE) != 0 || (pa % PGSIZE) != 0 || (sz % PGSIZE) != 0 ||
-      sz == 0)
+  if ((va % PGSIZE) != 0 || (pa % PGSIZE) != 0 || (sz % PGSIZE) != 0 || sz == 0)
     panic("kvmmap: alignment");
 
   while (sz > 0) {
@@ -311,7 +306,6 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
     *pte = 0;
   }
 }
-
 
 // Allocate PTEs and physical memory to grow process from oldsz to
 // newsz, which need not be page aligned.  Returns new size or 0 on error.
@@ -472,7 +466,6 @@ copyout(pagetable_t pagetable, uint64 psz, uint64 dstva, char *src, uint64 len)
       return -1;
     }
 
-
     // forbid copyout over read-only user text pages.
     if ((*pte & PTE_W) == 0)
       return -1;
@@ -564,7 +557,6 @@ copyinstr(pagetable_t pagetable, uint64 psz, char *dst, uint64 srcva,
   }
 }
 
-
 // allocate and map user memory if process is referencing a page
 // that was lazily allocated in sys_sbrk().
 // returns 0 if va is invalid or already mapped, or if
@@ -573,7 +565,6 @@ uint64
 vmfault(pagetable_t pagetable, uint64 psz, uint64 va, int read)
 {
   uint64 mem;
-
 
   if (va >= psz)
     return 0;
